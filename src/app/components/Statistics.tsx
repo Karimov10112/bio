@@ -81,65 +81,6 @@ export function Statistics() {
       transition={{ duration: 0.3 }}
       className="space-y-6"
     >
-      {/* Stats Cards */}
-      <div className="grid md:grid-cols-3 gap-4">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.1 }}
-        >
-          <Card className="p-6 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900">
-            <div className="flex items-start justify-between mb-3">
-              <div className="flex-1">
-                <p className="text-sm text-muted-foreground mb-1">{t.averageFasting}</p>
-                <p className={`text-3xl font-bold ${getStatusColor(parseFloat(stats.avgFasting))}`}>
-                  {stats.avgFasting}
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">{t.mmol}</p>
-              </div>
-              <TrendingUp className="w-8 h-8 text-blue-600 dark:text-blue-400" />
-            </div>
-          </Card>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.2 }}
-        >
-          <Card className="p-6 bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950 dark:to-purple-900">
-            <div className="flex items-start justify-between mb-3">
-              <div className="flex-1">
-                <p className="text-sm text-muted-foreground mb-1">{t.averagePostMeal}</p>
-                <p className={`text-3xl font-bold ${getStatusColor(parseFloat(stats.avgPostMeal), true)}`}>
-                  {stats.avgPostMeal}
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">{t.mmol}</p>
-              </div>
-              <Activity className="w-8 h-8 text-purple-600 dark:text-purple-400" />
-            </div>
-          </Card>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.3 }}
-        >
-          <Card className="p-6 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950 dark:to-green-900">
-            <div className="flex items-start justify-between mb-3">
-              <div className="flex-1">
-                <p className="text-sm text-muted-foreground mb-1">{t.averageDifference}</p>
-                <p className="text-3xl font-bold text-green-600 dark:text-green-400">
-                  {stats.avgDifference}
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">{t.mmol}</p>
-              </div>
-              <TrendingDown className="w-8 h-8 text-green-600 dark:text-green-400" />
-            </div>
-          </Card>
-        </motion.div>
-      </div>
 
       {/* Chart */}
       <motion.div

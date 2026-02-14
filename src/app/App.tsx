@@ -15,6 +15,7 @@ function AppContent() {
   const { theme, toggleTheme } = useTheme();
   const t = translations[language];
   const [activeTab, setActiveTab] = useState('journal');
+  const [isLangOpen, setIsLangOpen] = useState(false);
 
   const languages: { code: Language; name: string; flag: string }[] = [
     { code: 'uz', name: 'O\'zbekcha', flag: '🇺🇿' },
@@ -46,15 +47,27 @@ function AppContent() {
 
             <div className="flex items-center gap-2">
               {/* Language Selector */}
-              <div className="relative group">
-                <button className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+              <div className="relative">
+                <button 
+                  onClick={() => setIsLangOpen(!isLangOpen)} // Bosilganda teskari holatga o'tadi
+                  onBlur={() => setTimeout(() => setIsLangOpen(false), 200)} // Boshqa joyga bosilganda yopiladi
+                  className={`p-2 rounded-lg transition-colors ${isLangOpen ? 'bg-slate-100 dark:bg-slate-800' : 'hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+                >
                   <Globe className="w-5 h-5" />
                 </button>
-                <div className="absolute right-0 top-full mt-2 w-40 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
+                
+                <div className={`absolute right-0 top-full mt-2 w-40 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 transition-all duration-200 z-50 ${
+                  isLangOpen 
+                    ? 'opacity-100 visible scale-100' 
+                    : 'opacity-0 invisible scale-95 pointer-events-none'
+                }`}>
                   {languages.map((lang) => (
                     <button
                       key={lang.code}
-                      onClick={() => setLanguage(lang.code)}
+                      onClick={() => {
+                        setLanguage(lang.code);
+                        setIsLangOpen(false); // Til tanlanganda menyu yopiladi
+                      }}
                       className={`w-full px-4 py-2 text-left hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors first:rounded-t-lg last:rounded-b-lg flex items-center gap-2 ${
                         language === lang.code ? 'bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400' : ''
                       }`}

@@ -334,29 +334,31 @@ export function Products() {
                 {/* Macronutrients */}
                 <div>
                   <h3 className="font-semibold text-lg mb-3">{t.macronutrients}</h3>
-                  <div className="h-8 flex rounded-full overflow-hidden">
-                    <div
-                      className="bg-blue-500 flex items-center justify-center text-white text-xs font-medium"
-                      style={{ width: `${(selectedProduct.nutrition.carbs * 4 / selectedProduct.nutrition.calories) * 100}%` }}
-                      title={`${t.carbs}: ${selectedProduct.nutrition.carbs}g`}
-                    >
-                      {((selectedProduct.nutrition.carbs * 4 / selectedProduct.nutrition.calories) * 100).toFixed(0)}%
-                    </div>
-                    <div
-                      className="bg-red-500 flex items-center justify-center text-white text-xs font-medium"
-                      style={{ width: `${(selectedProduct.nutrition.protein * 4 / selectedProduct.nutrition.calories) * 100}%` }}
-                      title={`${t.protein}: ${selectedProduct.nutrition.protein}g`}
-                    >
-                      {((selectedProduct.nutrition.protein * 4 / selectedProduct.nutrition.calories) * 100).toFixed(0)}%
-                    </div>
-                    <div
-                      className="bg-yellow-500 flex items-center justify-center text-white text-xs font-medium"
-                      style={{ width: `${(selectedProduct.nutrition.fat * 9 / selectedProduct.nutrition.calories) * 100}%` }}
-                      title={`${t.fat}: ${selectedProduct.nutrition.fat}g`}
-                    >
-                      {((selectedProduct.nutrition.fat * 9 / selectedProduct.nutrition.calories) * 100).toFixed(0)}%
-                    </div>
+                  <div className="h-8 flex rounded-full overflow-hidden border dark:border-slate-700">
+                  <div
+                    className="bg-blue-500 flex items-center justify-center text-white text-xs font-medium"
+                    style={{ width: `${(selectedProduct.nutrition.carbs * 400) / (selectedProduct.nutrition.carbs * 4 + selectedProduct.nutrition.protein * 4 + selectedProduct.nutrition.fat * 9 || 1)}%` }}
+                    title={`${t.carbs}: ${selectedProduct.nutrition.carbs}g`}
+                  >
+                    {((selectedProduct.nutrition.carbs * 400) / (selectedProduct.nutrition.carbs * 4 + selectedProduct.nutrition.protein * 4 + selectedProduct.nutrition.fat * 9 || 1)).toFixed(0)}%
                   </div>
+
+                  <div
+                    className="bg-red-500 flex items-center justify-center text-white text-xs font-medium"
+                    style={{ width: `${(selectedProduct.nutrition.protein * 400) / (selectedProduct.nutrition.carbs * 4 + selectedProduct.nutrition.protein * 4 + selectedProduct.nutrition.fat * 9 || 1)}%` }}
+                    title={`${t.protein}: ${selectedProduct.nutrition.protein}g`}
+                  >
+                    {((selectedProduct.nutrition.protein * 400) / (selectedProduct.nutrition.carbs * 4 + selectedProduct.nutrition.protein * 4 + selectedProduct.nutrition.fat * 9 || 1)).toFixed(0)}%
+                  </div>
+
+                  <div
+                    className="bg-yellow-500 flex items-center justify-center text-white text-xs font-medium"
+                  style={{ width: `${(selectedProduct.nutrition.fat * 900) / (selectedProduct.nutrition.carbs * 4 + selectedProduct.nutrition.protein * 4 + selectedProduct.nutrition.fat * 9 || 1)}%` }}
+                    title={`${t.fat}: ${selectedProduct.nutrition.fat}g`}
+                  >
+                    {((selectedProduct.nutrition.fat * 900) / (selectedProduct.nutrition.carbs * 4 + selectedProduct.nutrition.protein * 4 + selectedProduct.nutrition.fat * 9 || 1)).toFixed(0)}%
+                  </div>
+                </div>
                   <div className="flex justify-between mt-2 text-sm">
                     <span className="flex items-center gap-1">
                       <span className="w-3 h-3 bg-blue-500 rounded"></span>
