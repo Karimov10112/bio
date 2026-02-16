@@ -39,16 +39,39 @@ export function DailyJournal() {
     localStorage.setItem('sugar_reminders', JSON.stringify(reminders));
   }, [reminders]);
 
+  // --- BUDULNIK VA OVOZ TRIGGERI (10 SEKUNDLIK) ---
   const triggerAlarm = useCallback((reminder: Reminder) => {
-    if ('vibrate' in navigator) navigator.vibrate([500, 200, 500, 200, 500]);
+    // 1. Vibratsiya (Android uchun)
+    if ('vibrate' in navigator) {
+      navigator.vibrate([500, 200, 500, 200, 500]);
+    }
+
+    // 2. Ovozni ijro etish
     const audio = new Audio(ALERT_SOUND);
     audio.volume = 1.0;
-    audio.play().catch(() => {});
-    const label = reminder.type === 'tablet' ? (language === 'uz' ? '💊 DORI VAQTI!' : '💊 ВРЕМЯ ЛЕКАРСТВА!') : '💉 INSULIN VAQTI!';
+    audio.play().catch((e) => console.log("Ovoz uchun ekranni bir marta bosing", e));
+
+    // 3. 10 soniyadan keyin ovozni to'xtatish
+    setTimeout(() => {
+      audio.pause();
+      audio.currentTime = 0; // Ovozni boshiga qaytarib qo'yish
+    }, 10000); // 10000 ms = 10 sekund
+
+    // 4. Matnli ogohlantirish
+    const label = reminder.type === 'tablet' 
+      ? (language === 'uz' ? '💊 DORI VAQTI!' : '💊 ВРЕМЯ ЛЕКАРСТВА!') 
+      : (language === 'uz' ? '💉 INSULIN VAQTI!' : '💉 ВРЕМЯ ИНСУЛИНА!');
+
     toast.error(label, {
-      description: `${reminder.time} - ${language === 'uz' ? 'Muolajani bajaring!' : 'Выполните процедуру!'}`,
-      duration: 20000,
-      action: { label: "OK", onClick: () => audio.pause() }
+      description: `${reminder.time} - ${language === 'uz' ? 'Muolajani o\'z vaqtida bajaring!' : 'Выполните процедуру вовремя!'}`,
+      duration: 10000, // Toast xabari ham 10 sekund tursin
+      action: {
+        label: "OK",
+        onClick: () => {
+          audio.pause();
+          audio.currentTime = 0;
+        },
+      },
     });
   }, [language]);
 
