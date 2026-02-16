@@ -40,31 +40,48 @@ export function DailyJournal() {
   }, [reminders]);
 
   // --- BUDULNIK VA OVOZ TRIGGERI (10 SEKUNDLIK) ---
+  // --- BUDULNIK VA BILDIRISHNOMA TRIGGERI ---
   const triggerAlarm = useCallback((reminder: Reminder) => {
     // 1. Vibratsiya (Android uchun)
     if ('vibrate' in navigator) {
       navigator.vibrate([500, 200, 500, 200, 500]);
     }
 
-    // 2. Ovozni ijro etish
+    // 2. Budulnik ovozini ijro etish
     const audio = new Audio(ALERT_SOUND);
     audio.volume = 1.0;
-    audio.play().catch((e) => console.log("Ovoz uchun ekranni bir marta bosing", e));
+    audio.play().catch((e) => console.log("Ovoz ruxsati uchun ekranni bosing", e));
 
-    // 3. 10 soniyadan keyin ovozni to'xtatish
+    // 10 soniyadan keyin ovozni to'xtatish
     setTimeout(() => {
       audio.pause();
-      audio.currentTime = 0; // Ovozni boshiga qaytarib qo'yish
-    }, 10000); // 10000 ms = 10 sekund
+      audio.currentTime = 0;
+    }, 10000);
 
-    // 4. Matnli ogohlantirish
+    // 3. Matnlar (Tillar bo'yicha)
     const label = reminder.type === 'tablet' 
       ? (language === 'uz' ? '💊 DORI VAQTI!' : '💊 ВРЕМЯ ЛЕКАРСТВА!') 
       : (language === 'uz' ? '💉 INSULIN VAQTI!' : '💉 ВРЕМЯ ИНСУЛИНА!');
+    
+    const desc = language === 'uz' ? 'Muolajani o\'z vaqtida bajaring!' : 'Выполните процедуру вовремя!';
 
+    // 4. BRAUZER BILDIRISHNOMASI (Push Notification)
+    if ("Notification" in window) {
+      if (Notification.permission === "granted") {
+        new Notification(label, { body: desc, icon: "/vite.svg" });
+      } else if (Notification.permission !== "denied") {
+        Notification.requestPermission().then(permission => {
+          if (permission === "granted") {
+            new Notification(label, { body: desc, icon: "/vite.svg" });
+          }
+        });
+      }
+    }
+
+    // 5. EKRANDAGI BILDIRISHNOMA (Toast)
     toast.error(label, {
-      description: `${reminder.time} - ${language === 'uz' ? 'Muolajani o\'z vaqtida bajaring!' : 'Выполните процедуру вовремя!'}`,
-      duration: 10000, // Toast xabari ham 10 sekund tursin
+      description: `${reminder.time} - ${desc}`,
+      duration: 10000,
       action: {
         label: "OK",
         onClick: () => {
