@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useApp } from '../contexts/AppContext';
 import { translations } from '../utils/translations';
 import { Card } from './ui/card';
@@ -17,17 +17,18 @@ interface Reminder {
   label: string;
 }
 
+// Mobil qurilmalarda ovoz chiqishi uchun standart URL
+const ALERT_SOUND = "https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3";
+
 export function DailyJournal() {
   const { language, addRecord, setCurrentFasting, setCurrentPostMeal } = useApp();
   const t = translations[language];
 
-  // Mavjud state-lar
   const [fasting, setFasting] = useState('');
   const [postMeal, setPostMeal] = useState('');
   const [notes, setNotes] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
 
-  // --- Yangi Eslatmalar qismi uchun state-lar ---
   const [reminders, setReminders] = useState<Reminder[]>(() => {
     const saved = localStorage.getItem('sugar_reminders');
     return saved ? JSON.parse(saved) : [];
@@ -35,39 +36,65 @@ export function DailyJournal() {
   const [newReminderTime, setNewReminderTime] = useState('');
   const [newReminderType, setNewReminderType] = useState<'tablet' | 'insulin'>('tablet');
 
-  // Eslatmalarni xotiraga saqlash
   useEffect(() => {
     localStorage.setItem('sugar_reminders', JSON.stringify(reminders));
   }, [reminders]);
 
-  // Vaqtni tekshirib turish (Notification mantiqi)
+  // Mobil bildirishnoma va signalizatsiya funksiyasi
+  const triggerAlarm = useCallback((reminder: Reminder) => {
+    // 1. Vibratsiya (Mobil uchun juda muhim)
+    if ('vibrate' in navigator) {
+      navigator.vibrate([500, 200, 500, 200, 500]);
+    }
+
+    // 2. Ovozli xabar
+    const audio = new Audio(ALERT_SOUND);
+    audio.play().catch(e => console.log("Ovoz ruxsati kerak"));
+
+    // 3. Push Notification
+    if (Notification.permission === 'granted') {
+      new Notification(reminder.type === 'tablet' ? "Dori vaqti!" : "Insulin vaqti!", {
+        body: `${reminder.time} bo'ldi. Dorilaringizni unutmang.`,
+        icon: '/favicon.ico',
+        tag: 'diabetes-reminder', // Bir xil bildirishnomalar yig'ilib qolmasligi uchun
+        renotify: true
+      });
+    }
+
+    // 4. Ekrandagi xabar
+    toast.error(`${reminder.time} - ${reminder.label} vaqti bo'ldi!`, {
+      duration: 30000, // 30 soniya turadi
+      action: {
+        label: "OK",
+        onClick: () => {
+          if ('vibrate' in navigator) navigator.vibrate(0); // Vibratsiyani to'xtatish
+        }
+      }
+    });
+  }, []);
+
+  // Vaqtni tekshirish mantiqi (Har 30 soniyada)
   useEffect(() => {
-    const timer = setInterval(() => {
+    const checkInterval = setInterval(() => {
       const now = new Date();
       const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
       
       reminders.forEach(r => {
-        if (r.time === currentTime) {
-          // Brauzer bildirishnomasi
-          if (Notification.permission === 'granted') {
-            new Notification(r.type === 'tablet' ? "Dori vaqti!" : "Insulin vaqti!", {
-              body: `${r.time} bo'ldi. Dorilaringizni qabul qilishni unutmang.`,
-              icon: '/logo.png'
-            });
-          }
-          toast.info(`${r.time} - ${r.type === 'tablet' ? "Dori" : "Insulin"} vaqti bo'ldi!`);
+        // Agar soniya 0 bo'lsa va vaqt to'g'ri kelsa
+        if (r.time === currentTime && now.getSeconds() < 30) {
+          triggerAlarm(r);
         }
       });
-    }, 60000); // Har daqiqada tekshiradi
+    }, 30000);
 
-    return () => clearInterval(timer);
-  }, [reminders]);
+    return () => clearInterval(checkInterval);
+  }, [reminders, triggerAlarm]);
 
   const addReminder = () => {
     if (!newReminderTime) return;
     
-    // Bildirishnomaga ruxsat so'rash
-    if (Notification.permission !== 'granted') {
+    // Mobil brauzerlarda bildirishnomaga ruxsat so'rash
+    if (Notification.permission === 'default') {
       Notification.requestPermission();
     }
 
@@ -80,13 +107,12 @@ export function DailyJournal() {
 
     setReminders([...reminders, newRem].sort((a, b) => a.time.localeCompare(b.time)));
     setNewReminderTime('');
-    toast.success(language === 'uz' ? 'Eslatma qo\'shildi' : 'Напоминание добавлено');
+    toast.success(language === 'uz' ? 'Eslatma saqlandi' : 'Напоминание сохранено');
   };
 
   const deleteReminder = (id: string) => {
     setReminders(reminders.filter(r => r.id !== id));
   };
-  // --- Eslatmalar qismi tugadi ---
 
   const getAdvice = () => {
     const fastingNum = parseFloat(fasting);
@@ -94,255 +120,130 @@ export function DailyJournal() {
     let advice: string[] = [];
 
     if (!isNaN(fastingNum)) {
-      if (fastingNum < 3.9) {
-        advice.push(`⚠️ ${t.fastingBloodSugar}: ${t.advice} - Qand darajasi juda past! Tezda shirinlik iste'mol qiling.`);
-      } else if (fastingNum <= 5.5) {
-        advice.push(`✅ ${t.fastingBloodSugar}: ${t.normalFasting}`);
-      } else if (fastingNum <= 6.9) {
-        advice.push(`⚠️ ${t.fastingBloodSugar}: ${t.preDiabeticFasting}`);
-      } else {
-        advice.push(`🚨 ${t.fastingBloodSugar}: ${t.diabeticFasting}`);
-      }
+      if (fastingNum < 3.9) advice.push(`⚠️ ${t.fastingBloodSugar}: Juda past! Shoshilinch shirinlik yeng.`);
+      else if (fastingNum <= 5.5) advice.push(`✅ ${t.fastingBloodSugar}: ${t.normalFasting}`);
+      else if (fastingNum <= 6.9) advice.push(`⚠️ ${t.fastingBloodSugar}: ${t.preDiabeticFasting}`);
+      else advice.push(`🚨 ${t.fastingBloodSugar}: ${t.diabeticFasting}`);
     }
 
     if (!isNaN(postMealNum)) {
-      if (postMealNum < 7.8) {
-        advice.push(`✅ ${t.postMealBloodSugar}: ${t.normalPostMeal}`);
-      } else if (postMealNum <= 11.0) {
-        advice.push(`⚠️ ${t.postMealBloodSugar}: ${t.preDiabeticPostMeal}`);
-      } else {
-        advice.push(`🚨 ${t.postMealBloodSugar}: ${t.diabeticPostMeal}`);
-      }
+      if (postMealNum < 7.8) advice.push(`✅ ${t.postMealBloodSugar}: ${t.normalPostMeal}`);
+      else if (postMealNum <= 11.0) advice.push(`⚠️ ${t.postMealBloodSugar}: ${t.preDiabeticPostMeal}`);
+      else advice.push(`🚨 ${t.postMealBloodSugar}: ${t.diabeticPostMeal}`);
     }
     return advice;
   };
 
   const handleSave = () => {
-    const fastingNum = parseFloat(fasting);
-    const postMealNum = parseFloat(postMeal);
-
-    if (!isNaN(fastingNum) && !isNaN(postMealNum)) {
-      addRecord({
-        date,
-        fastingLevel: fastingNum,
-        postMealLevel: postMealNum,
-        notes,
-      });
-      setCurrentFasting(fastingNum);
-      setCurrentPostMeal(postMealNum);
-      setFasting('');
-      setPostMeal('');
-      setNotes('');
-      setDate(new Date().toISOString().split('T')[0]);
+    const f = parseFloat(fasting);
+    const p = parseFloat(postMeal);
+    if (!isNaN(f) || !isNaN(p)) {
+      addRecord({ date, fastingLevel: f || 0, postMealLevel: p || 0, notes });
+      setCurrentFasting(f || 0);
+      setCurrentPostMeal(p || 0);
+      setFasting(''); setPostMeal(''); setNotes('');
       toast.success(language === 'uz' ? 'Ma\'lumot saqlandi' : 'Данные сохранены');
     }
   };
 
-  const advice = getAdvice();
-  const hasValidInput = !isNaN(parseFloat(fasting)) || !isNaN(parseFloat(postMeal));
+  const adviceList = getAdvice();
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-      className="max-w-4xl mx-auto space-y-6"
-    >
-      {/* 1. Asosiy Shakar kiritish formasi */}
-      <Card className="p-6 bg-white dark:bg-slate-800 shadow-xl border-none">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-4xl mx-auto space-y-6 pb-20">
+      {/* Shakar kiritish formasi */}
+      <Card className="p-6 bg-white dark:bg-slate-800 shadow-xl border-none mx-4 md:mx-0">
         <div className="grid md:grid-cols-2 gap-6">
           <div className="space-y-4">
             <div>
-              <Label htmlFor="fasting">{t.fastingBloodSugar}</Label>
+              <Label>{t.fastingBloodSugar}</Label>
               <div className="relative mt-2">
-                <Input
-                  id="fasting"
-                  type="number"
-                  step="0.1"
-                  placeholder="5.5"
-                  value={fasting}
-                  onChange={(e) => setFasting(e.target.value)}
-                  className="pr-20 focus:ring-blue-500"
-                />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                  {t.mmol}
-                </span>
+                <Input type="number" step="0.1" inputMode="decimal" value={fasting} onChange={(e) => setFasting(e.target.value)} className="text-lg py-6" placeholder="5.5" />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">{t.mmol}</span>
               </div>
             </div>
-
             <div>
-              <Label htmlFor="postMeal">{t.postMealBloodSugar}</Label>
+              <Label>{t.postMealBloodSugar}</Label>
               <div className="relative mt-2">
-                <Input
-                  id="postMeal"
-                  type="number"
-                  step="0.1"
-                  placeholder="7.0"
-                  value={postMeal}
-                  onChange={(e) => setPostMeal(e.target.value)}
-                  className="pr-20 focus:ring-blue-500"
-                />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                  {t.mmol}
-                </span>
+                <Input type="number" step="0.1" inputMode="decimal" value={postMeal} onChange={(e) => setPostMeal(e.target.value)} className="text-lg py-6" placeholder="7.0" />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">{t.mmol}</span>
               </div>
             </div>
           </div>
-
           <div className="space-y-4">
-            <div>
-              <Label htmlFor="date">{t.date}</Label>
-              <Input
-                id="date"
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="mt-2"
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="notes">{t.notes}</Label>
-              <Textarea
-                id="notes"
-                placeholder={t.notes}
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                className="mt-2 min-h-[80px]"
-              />
-            </div>
+            <div><Label>{t.date}</Label><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="mt-2 py-6" /></div>
+            <div><Label>{t.notes}</Label><Textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="mt-2 min-h-[100px]" /></div>
           </div>
         </div>
-
-        <div className="mt-6">
-          <Button
-            onClick={handleSave}
-            disabled={!hasValidInput}
-            className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-md"
-          >
-            {t.saveRecord}
-          </Button>
-        </div>
+        <Button onClick={handleSave} className="w-full mt-6 bg-blue-600 hover:bg-blue-700 py-6 text-lg">{t.saveRecord}</Button>
       </Card>
 
-      {/* 2. Yangi: Dori Eslatmalari (Reminders) Sektsiyasi */}
-      <div className="grid md:grid-cols-2 gap-6">
+      {/* Dori Eslatmalari */}
+      <div className="grid md:grid-cols-2 gap-6 px-4 md:px-0">
         <Card className="p-6 bg-white dark:bg-slate-800 border-none shadow-lg">
           <div className="flex items-center gap-2 mb-4">
             <Bell className="w-5 h-5 text-blue-600" />
-            <h3 className="font-bold text-lg">
-              {language === 'uz' ? 'Dori eslatmalari' : 'Напоминания'}
-            </h3>
+            <h3 className="font-bold">{language === 'uz' ? 'Eslatma qo\'shish' : 'Добавить напоминание'}</h3>
           </div>
-          
           <div className="space-y-4">
             <div className="flex gap-2">
-              <button 
-                onClick={() => setNewReminderType('tablet')}
-                className={`flex-1 p-3 rounded-xl border-2 transition-all flex items-center justify-center gap-2 ${newReminderType === 'tablet' ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20' : 'border-slate-100 dark:border-slate-700'}`}
-              >
-                <Pill className="w-4 h-4" /> Tabletka
+              <button onClick={() => setNewReminderType('tablet')} className={`flex-1 p-3 rounded-xl border-2 transition-all ${newReminderType === 'tablet' ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20' : 'border-slate-100 dark:border-slate-700'}`}>
+                <Pill className="w-4 h-4 mx-auto mb-1" /> Tabletka
               </button>
-              <button 
-                onClick={() => setNewReminderType('insulin')}
-                className={`flex-1 p-3 rounded-xl border-2 transition-all flex items-center justify-center gap-2 ${newReminderType === 'insulin' ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20' : 'border-slate-100 dark:border-slate-700'}`}
-              >
-                <Syringe className="w-4 h-4" /> Insulin
+              <button onClick={() => setNewReminderType('insulin')} className={`flex-1 p-3 rounded-xl border-2 transition-all ${newReminderType === 'insulin' ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20' : 'border-slate-100 dark:border-slate-700'}`}>
+                <Syringe className="w-4 h-4 mx-auto mb-1" /> Insulin
               </button>
             </div>
-            
             <div className="flex gap-2">
-              <Input 
-                type="time" 
-                value={newReminderTime}
-                onChange={(e) => setNewReminderTime(e.target.value)}
-                className="flex-1"
-              />
-              <Button onClick={addReminder} className="bg-blue-600">
-                +
-              </Button>
+              <Input type="time" value={newReminderTime} onChange={(e) => setNewReminderTime(e.target.value)} className="text-lg py-6 flex-1" />
+              <Button onClick={addReminder} className="bg-blue-600 px-8">+</Button>
             </div>
           </div>
         </Card>
 
-        {/* Eslatmalar Ro'yxati */}
-        <Card className="p-6 bg-white dark:bg-slate-800 border-none shadow-lg overflow-hidden relative">
-          <div className="max-h-[200px] overflow-y-auto space-y-2 pr-2">
-            <AnimatePresence>
-              {reminders.length === 0 ? (
-                <p className="text-center text-muted-foreground py-10">Hozircha eslatmalar yo'q</p>
-              ) : (
-                reminders.map((r) => (
-                  <motion.div 
-                    key={r.id}
-                    initial={{ x: 50, opacity: 0 }}
-                    animate={{ x: 0, opacity: 1 }}
-                    exit={{ x: -50, opacity: 0 }}
-                    className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900/50 rounded-lg group"
-                  >
-                    <div className="flex items-center gap-3">
-                      {r.type === 'tablet' ? <Pill className="w-4 h-4 text-emerald-500" /> : <Syringe className="w-4 h-4 text-blue-500" />}
-                      <div>
-                        <p className="font-bold">{r.time}</p>
-                        <p className="text-xs text-muted-foreground">{r.label}</p>
-                      </div>
-                    </div>
-                    <button onClick={() => deleteReminder(r.id)} className="text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </motion.div>
-                ))
-              )}
-            </AnimatePresence>
-          </div>
+        <Card className="p-4 bg-white dark:bg-slate-800 border-none shadow-lg max-h-[300px] overflow-y-auto">
+          <AnimatePresence>
+            {reminders.length === 0 ? (
+              <p className="text-center text-muted-foreground py-10">Eslatmalar yo'q</p>
+            ) : (
+              reminders.map((r) => (
+                <motion.div key={r.id} initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -20, opacity: 0 }} className="flex items-center justify-between p-3 mb-2 bg-slate-50 dark:bg-slate-900 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    {r.type === 'tablet' ? <Pill className="text-emerald-500" /> : <Syringe className="text-blue-500" />}
+                    <div><p className="font-bold">{r.time}</p><p className="text-xs text-muted-foreground">{r.label}</p></div>
+                  </div>
+                  <button onClick={() => deleteReminder(r.id)} className="text-red-500 p-2"><Trash2 size={18} /></button>
+                </motion.div>
+              ))
+            )}
+          </AnimatePresence>
         </Card>
       </div>
 
-      {/* 3. Maslahatlar va Normal qiymatlar (O'z holicha qoldi) */}
-      {advice.length > 0 && (
-        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}>
-          <Card className="p-6 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950 border-blue-200 dark:border-blue-800 shadow-md">
-            <div className="flex items-start gap-3">
-              <AlertCircle className="w-6 h-6 text-blue-600 dark:text-blue-400 mt-1 flex-shrink-0" />
-              <div className="flex-1">
-                <h3 className="font-semibold text-lg mb-3 text-blue-900 dark:text-blue-100">{t.advice}</h3>
-                <div className="space-y-2">
-                  {advice.map((item, index) => (
-                    <motion.div key={index} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.1 }} className="p-3 bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-blue-100 dark:border-blue-900">
-                      <p className="text-sm leading-relaxed">{item}</p>
-                    </motion.div>
-                  ))}
-                </div>
-              </div>
+      {/* Maslahatlar va Normal Qiymatlar */}
+      <div className="px-4 md:px-0 space-y-6">
+        {adviceList.length > 0 && (
+          <Card className="p-6 bg-blue-50 dark:bg-blue-900/20 border-blue-200">
+            <h3 className="font-bold mb-4 flex items-center gap-2"><AlertCircle size={20} className="text-blue-600"/> {t.advice}</h3>
+            <div className="space-y-2">
+              {adviceList.map((item, i) => <p key={i} className="bg-white dark:bg-slate-800 p-3 rounded-lg shadow-sm text-sm">{item}</p>)}
             </div>
           </Card>
-        </motion.div>
-      )}
+        )}
 
-      <Card className="p-6 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950 dark:to-emerald-950 shadow-md border-none">
-        <div className="flex items-center gap-3 mb-4">
-          <TrendingUp className="w-6 h-6 text-green-600 dark:text-green-400" />
-          <h3 className="font-semibold text-lg text-green-900 dark:text-green-100">
-            {language === 'uz' ? 'Normal qiymatlar' : language === 'ru' ? 'Нормальные значения' : 'Normal Values'}
-          </h3>
-        </div>
-        <div className="grid md:grid-cols-2 gap-4">
-          <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-green-100 dark:border-green-900">
-            <div className="flex items-center gap-2 mb-2">
-              <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
-              <span className="font-medium">{t.fastingBloodSugar}</span>
+        <Card className="p-6 bg-emerald-50 dark:bg-emerald-900/20 border-none">
+          <h3 className="font-bold mb-4 flex items-center gap-2"><TrendingUp size={20} className="text-emerald-600"/> Normal qiymatlar</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm">
+              <span className="text-sm text-muted-foreground">{t.fastingBloodSugar}</span>
+              <p className="text-2xl font-bold text-emerald-600">3.9 - 5.5 {t.mmol}</p>
             </div>
-            <p className="text-2xl font-bold text-green-600 dark:text-green-400">3.9 - 5.5 {t.mmol}</p>
-          </div>
-          <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-green-100 dark:border-green-900">
-            <div className="flex items-center gap-2 mb-2">
-              <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
-              <span className="font-medium">{t.postMealBloodSugar}</span>
+            <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm">
+              <span className="text-sm text-muted-foreground">{t.postMealBloodSugar}</span>
+              <p className="text-2xl font-bold text-emerald-600">&lt; 7.8 {t.mmol}</p>
             </div>
-            <p className="text-2xl font-bold text-green-600 dark:text-green-400">&lt; 7.8 {t.mmol}</p>
           </div>
-        </div>
-      </Card>
+        </Card>
+      </div>
     </motion.div>
   );
 }
