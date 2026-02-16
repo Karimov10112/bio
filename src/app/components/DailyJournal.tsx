@@ -66,18 +66,15 @@ export function DailyJournal() {
     const desc = language === 'uz' ? 'Muolajani o\'z vaqtida bajaring!' : 'Выполните процедуру вовремя!';
 
     // 4. BRAUZER BILDIRISHNOMASI (Push Notification)
-    if ("Notification" in window) {
-      if (Notification.permission === "granted") {
-        new Notification(label, { body: desc, icon: "/vite.svg" });
-      } else if (Notification.permission !== "denied") {
-        Notification.requestPermission().then(permission => {
-          if (permission === "granted") {
-            new Notification(label, { body: desc, icon: "/vite.svg" });
-          }
-        });
-      }
-    }
-
+    if ("Notification" in window && Notification.permission === "granted") {
+  new Notification(label, { 
+    body: desc, 
+    icon: "/pill-icon.png", // Dori rasmi
+    tag: 'medication-alarm', 
+    requireInteraction: true, // FOYDALANUVCHI BOSMAGUNCHA YO'QOLMAYDI
+    vibrate: [200, 100, 200]
+  });
+}
     // 5. EKRANDAGI BILDIRISHNOMA (Toast)
     toast.error(label, {
       description: `${reminder.time} - ${desc}`,
