@@ -266,7 +266,7 @@ export function DailyJournal() {
         <div className="flex items-center gap-2 mb-4 text-slate-500 font-bold text-sm uppercase tracking-wider"><TrendingUp size={16} /> {language === 'uz' ? 'Me\'yoriy ko\'rsatkichlar' : 'Нормальные показатели'}</div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border flex justify-between items-center shadow-sm">
-            <div><p className="text-xs text-slate-400 mb-1">{t.fastingBloodSugar}</p><p className="text-xl font-black text-emerald-600">3.9 - 5.5 <span className="text-xs font-normal">mmol/L</span></p></div>
+            <div><p className="text-xs text-slate-400 mb-1">{t.fastingBloodSugar}</p><p className="text-xl font-black text-emerald-600">3.6 - 5.5 <span className="text-xs font-normal">mmol/L</span></p></div>
             <CheckCircle size={24} className="text-emerald-500 opacity-40" />
           </div>
           <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border flex justify-between items-center shadow-sm">
