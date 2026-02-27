@@ -10,16 +10,25 @@ import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 
 interface Reminder {
+  
   id: string;
   type: 'tablet' | 'insulin';
   time: string;
-  name?: string;
+  name: string;      // "?" belgisini olib tashlang, nomi majburiy bo'lsin
+  dosage?: string;    // Qo'shimcha maydon
+  isDaily?: boolean;  // Qo'shimcha maydon
+  notes?: string;     // Qo'shimcha maydon
 }
 
 const ALERT_SOUND = "https://assets.mixkit.co/active_storage/sfx/951/951-preview.mp3";
-
+const translations = {
+  uz: { fasting: "Och qoringa qand", save: "SAQLASH", date: "Sana", notes: "Izohlar" },
+  ru: { fasting: "Сахар натощак", save: "СОХРАНИТЬ", date: "Дата", notes: "Заметки" },
+  en: { fasting: "Fasting Sugar", save: "SAVE", date: "Date", notes: "Notes" }
+};
 export function DailyJournal() {
   const { language, addRecord, records, setCurrentFasting, setCurrentPostMeal } = useApp();
+  const t = translations[language as keyof typeof translations] || translations.uz;
 
   const [fasting, setFasting] = useState('');
   const [postMeal, setPostMeal] = useState('');
@@ -133,22 +142,22 @@ export function DailyJournal() {
       </div>
 
       {/* 2. ASOSIY FORMA (image_f8f7df.jpg uslubida) */}
-      <Card className="p-8 bg-white shadow-xl rounded-[2rem] border-none">
+      <Card className="p-8 bg-white dark:bg-slate-900 shadow-xl rounded-[2rem] border-none transition-colors">
         <div className="grid md:grid-cols-2 gap-8">
           <div className="space-y-6">
             <div>
               <Label className="text-slate-500 font-bold ml-1">Och qoringa qand</Label>
-              <Input type="number" step="0.1" value={fasting} onChange={(e) => setFasting(e.target.value)} className="h-14 text-lg rounded-2xl bg-slate-50 border-none mt-2" placeholder="5.5" />
+              <Input type="number" step="0.1" value={fasting} onChange={(e) => setFasting(e.target.value)} className="h-14 text-lg rounded-2xl bg-slate-50 dark:bg-slate-800 dark:text-white border-none mt-2 transition-colors" />
             </div>
             <div>
               <Label className="text-slate-500 font-bold ml-1">Ovqatdan keyingi qand</Label>
-              <Input type="number" step="0.1" value={postMeal} onChange={(e) => setPostMeal(e.target.value)} className="h-14 text-lg rounded-2xl bg-slate-50 border-none mt-2" placeholder="7.0" />
+              <Input type="number" step="0.1" value={postMeal} onChange={(e) => setPostMeal(e.target.value)} className="h-14 text-lg rounded-2xl bg-slate-50 dark:bg-slate-800 dark:text-white border-none mt-2 transition-colors" />
             </div>
           </div>
           <div className="space-y-6">
             <div>
               <Label className="text-slate-500 font-bold ml-1">Sana</Label>
-              <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-14 rounded-2xl bg-slate-50 border-none mt-2" />
+              <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-14 rounded-2xl bg-slate-50 dark:bg-slate-800 dark:text-white border-none mt-2 transition-colors" />
             </div>
             <div>
               <Label className="text-slate-500 font-bold ml-1">Izohlar</Label>
@@ -169,7 +178,7 @@ export function DailyJournal() {
               <AlertTriangle className="text-red-600" size={24} />
             </div>
             <div>
-              <p className="text-[10px] font-black text-red-400 uppercase tracking-widest">{item.cat}</p>
+              <p className="text-[10px] font-black text-red-400 uppercase tracking-widest">{item.category}</p>
               <p className="text-sm font-bold text-re d-900 leading-tight">
                 🚨 {item.title}: <span className="font-medium text-red-800">{item.text}</span>
               </p>
@@ -277,6 +286,130 @@ export function DailyJournal() {
           </div>
         )}
       </AnimatePresence>
+      <AnimatePresence>
+  {isModalOpen && (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={() => setIsModalOpen(false)}>
+      <motion.div 
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: 20, opacity: 0 }}
+        onClick={(e) => e.stopPropagation()}
+        className="bg-white w-full max-w-[450px] rounded-[1.5rem] p-6 shadow-2xl relative"
+      >
+        {/* Sarlavha */}
+        <div className="flex justify-between items-center mb-6">
+          <h3 className="text-xl font-bold text-slate-800">Eslatma qo'shish</h3>
+          <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600">
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="space-y-5">
+          {/* 1. Dori / Insulin selektori */}
+          <div className="space-y-1.5">
+            <Label className="text-sm font-medium text-slate-700">Dori / Insulin</Label>
+            <select 
+              value={newReminderType}
+              onChange={(e) => setNewReminderType(e.target.value as 'tablet' | 'insulin')}
+              className="w-full h-12 rounded-xl bg-slate-50 border border-slate-200 px-4 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+            >
+              <option value="tablet">Dori</option>
+              <option value="insulin">Insulin</option>
+            </select>
+          </div>
+
+          {/* 2. Nomi */}
+          <div className="space-y-1.5">
+            <Label className="text-sm font-medium text-slate-700">Dori/Insulin nomi</Label>
+            <Input 
+              placeholder="masalan, Metformin" 
+              value={newReminderName} 
+              onChange={(e) => setNewReminderName(e.target.value)}
+              className="h-12 rounded-xl bg-slate-50 border-slate-200 px-4"
+            />
+          </div>
+
+          {/* 3. Doza */}
+          <div className="space-y-1.5">
+            <Label className="text-sm font-medium text-slate-700">Doza</Label>
+            <Input 
+              placeholder="masalan, 500mg" 
+              className="h-12 rounded-xl bg-slate-50 border-slate-200 px-4"
+              id="dosage_input"
+            />
+          </div>
+
+          {/* 4. Vaqt */}
+          <div className="space-y-1.5">
+            <Label className="text-sm font-medium text-slate-700">Vaqt</Label>
+            <div className="relative">
+              <Input 
+                type="time" 
+                value={newReminderTime} 
+                onChange={(e) => setNewReminderTime(e.target.value)}
+                className="h-12 rounded-xl bg-slate-50 border-slate-200 px-4 text-lg"
+              />
+              <Clock className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+            </div>
+          </div>
+
+          {/* 5. Kundalik takrorlash (Switch ko'rinishida) */}
+          <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100">
+            <span className="text-sm font-medium text-slate-700">Kundalik takrorlash</span>
+            <input type="checkbox" className="w-10 h-5 accent-blue-600 cursor-pointer" id="daily_repeat" defaultChecked />
+          </div>
+
+          {/* 6. Izohlar */}
+          <div className="space-y-1.5">
+            <Label className="text-sm font-medium text-slate-700">Izohlar (ixtiyoriy)</Label>
+            <Textarea 
+              placeholder="Qo'shimcha izohlar..." 
+              className="rounded-xl bg-slate-50 border-slate-200 min-h-[80px]"
+              id="reminder_notes"
+            />
+          </div>
+
+          {/* Tugmalar */}
+          <div className="flex gap-3 pt-2">
+            <button 
+              onClick={() => setIsModalOpen(false)}
+              className="flex-1 h-12 rounded-xl font-bold text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors"
+            >
+              Bekor qilish
+            </button>
+            <Button 
+              onClick={() => {
+                if(!newReminderTime || !newReminderName) return toast.error("Ma'lumotlarni to'ldiring!");
+                
+                const dosage = (document.getElementById('dosage_input') as HTMLInputElement).value;
+                const isDaily = (document.getElementById('daily_repeat') as HTMLInputElement).checked;
+                const notes = (document.getElementById('reminder_notes') as HTMLTextAreaElement).value;
+
+                setReminders([...reminders, { 
+                  id: Date.now().toString(), 
+                  type: newReminderType, 
+                  time: newReminderTime, 
+                  name: newReminderName,
+                  dosage,
+                  isDaily,
+                  notes
+                }]);
+                
+                setIsModalOpen(false);
+                setNewReminderName('');
+                setNewReminderTime('');
+                toast.success("Eslatma saqlandi!");
+              }}
+              className="flex-1 h-12 bg-slate-900 hover:bg-black text-white rounded-xl font-bold shadow-lg"
+            >
+              Saqlash
+            </Button>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  )}
+</AnimatePresence>
 
     </div>
   );

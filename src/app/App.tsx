@@ -48,15 +48,21 @@ function AppContent() {
             <div className="flex items-center gap-2">
               {/* Language Selector */}
               <div className="relative">
+                {/* Language Selector Tugmasi */}
                 <button 
-                  onClick={() => setIsLangOpen(!isLangOpen)} // Bosilganda teskari holatga o'tadi
-                  onBlur={() => setTimeout(() => setIsLangOpen(false), 200)} // Boshqa joyga bosilganda yopiladi
-                  className={`p-2 rounded-lg transition-colors ${isLangOpen ? 'bg-slate-100 dark:bg-slate-800' : 'hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+                  type="button" // Brauzerga bu tugma ekanini bildirish
+                  onClick={(e) => {
+                    e.stopPropagation(); // Hodisa yuqoriga tarqalishini to'xtatish
+                    setIsLangOpen(!isLangOpen);
+                  }}
+                  className={`p-2 rounded-lg transition-colors cursor-pointer touch-manipulation active:scale-95 ${
+                    isLangOpen ? 'bg-slate-100 dark:bg-slate-800' : 'hover:bg-slate-100 dark:hover:bg-slate-800'
+                  }`}
                 >
                   <Globe className="w-5 h-5" />
                 </button>
                 
-                <div className={`absolute right-0 top-full mt-2 w-40 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 transition-all duration-200 z-50 ${
+               <div className={`absolute right-0 top-full mt-2 w-40 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 transition-all duration-200 z-50 touch-auto ${
                   isLangOpen 
                     ? 'opacity-100 visible scale-100' 
                     : 'opacity-0 invisible scale-95 pointer-events-none'
@@ -64,16 +70,17 @@ function AppContent() {
                   {languages.map((lang) => (
                     <button
                       key={lang.code}
+                      type="button" // Har bir til tugmasi uchun
                       onClick={() => {
                         setLanguage(lang.code);
-                        setIsLangOpen(false); // Til tanlanganda menyu yopiladi
+                        setIsLangOpen(false);
                       }}
-                      className={`w-full px-4 py-2 text-left hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors first:rounded-t-lg last:rounded-b-lg flex items-center gap-2 ${
+                      className={`w-full px-4 py-2 text-left hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors first:rounded-t-lg last:rounded-b-lg flex items-center gap-2 cursor-pointer touch-manipulation active:bg-slate-200 dark:active:bg-slate-600 ${
                         language === lang.code ? 'bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400' : ''
                       }`}
                     >
                       <span>{lang.flag}</span>
-                      <span className="text-sm">{lang.name}</span>
+                      <span className="text-sm font-medium">{lang.name}</span>
                     </button>
                   ))}
                 </div>
